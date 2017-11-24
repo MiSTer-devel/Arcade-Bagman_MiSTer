@@ -7,29 +7,28 @@ use ieee.std_logic_1164.all,ieee.numeric_std.all;
 
 entity bagman is
 port(
-  clock_12mhz  : in std_logic;
-  clock_1mhz   : in std_logic;
-  reset        : in std_logic;
+	clock_12mhz  : in std_logic;
+	clock_1mhz   : in std_logic;
+	reset        : in std_logic;
 
-  video_r      : out std_logic_vector(2 downto 0);
-  video_g      : out std_logic_vector(2 downto 0);
-  video_b      : out std_logic_vector(1 downto 0);
-  video_clk    : out std_logic;
-  video_csync  : out std_logic;
-  video_hs     : out std_logic;
-  video_vs     : out std_logic;
-  hblank       : out std_logic;
-  vblank       : out std_logic;
-  vce          : out std_logic;
+	video_r      : out std_logic_vector(2 downto 0);
+	video_g      : out std_logic_vector(2 downto 0);
+	video_b      : out std_logic_vector(1 downto 0);
+	video_clk    : out std_logic;
+	video_csync  : out std_logic;
+	video_hs     : out std_logic;
+	video_vs     : out std_logic;
+	hblank       : out std_logic;
+	vblank       : out std_logic;
+	vce          : out std_logic;
 
-  joy_pcfrldu  : in std_logic_vector(6 downto 0);
+	joy_pcfrldu  : in std_logic_vector(6 downto 0);
 
-  sound_string : out std_logic_vector(12 downto 0);
+	sound_string : out std_logic_vector(12 downto 0);
 
-  sram_addr    : out std_logic_vector(16 downto 0);
-  sram_we      : out std_logic;
-  sram_di      : in std_logic_vector(7 downto 0);
-  sram_do      : out std_logic_vector(7 downto 0)
+	dn_addr      : in  std_logic_vector(16 downto 0);
+	dn_data      : in  std_logic_vector(7 downto 0);
+	dn_wr        : in  std_logic
 );
 end bagman;
 
@@ -108,6 +107,13 @@ signal speech_sample : integer range -512 to 511;
 
 -- random generator
 signal pal16r6_data : std_logic_vector(5 downto 0);
+
+signal sram_addr    : std_logic_vector(16 downto 0);
+signal sram_we      : std_logic;
+signal sram_di      : std_logic_vector(7 downto 0);
+signal sram_do      : std_logic_vector(7 downto 0);
+
+signal rom_cs       : std_logic;
 
 begin
 
@@ -455,19 +461,40 @@ port map (
 
 bagman_speech : entity work.bagman_speech
 port map(
+	clock_12mhz  => clock_12mhz,
 	Clk1MHz      => clock_1mhz,
 	hclkn        => cpu_clock,
 	adrCpu       => cpu_addr(2 downto 0),
 	doCpu        => cpu_data(0),
 	weSelSpeech  => speech_we_n,
-	SpeechSample => speech_sample
-); 
+	SpeechSample => speech_sample,
+	dn_addr      => dn_addr,
+	dn_data      => dn_data,
+	dn_wr        => dn_wr
+);
 
 pal16r6 : entity work.bagman_pal16r6
 port map(
 	clk  => vsync,
 	addr => cpu_addr(6 downto 0),
 	data => pal16r6_data
+);
+
+rom_cs <= '1' when dn_addr(16 downto 14) < "101" else '0';
+
+sram : work.dpram generic map (17,8)
+port map
+(
+	clock_a   => clock_12mhz,
+	wren_a    => dn_wr and rom_cs,
+	address_a => dn_addr(16 downto 0),
+	data_a    => dn_data,
+
+	clock_b   => not clock_12mhz,
+	wren_b    => sram_we,
+	address_b => sram_addr,
+	data_b    => sram_do,
+	q_b       => sram_di
 );
 
 end architecture;

@@ -9,12 +9,16 @@ use ieee.std_logic_1164.all,ieee.numeric_std.all;
 
 entity bagman_speech is
 port(
+  clock_12mhz  : in std_logic;
   hclkn        : in std_logic;
   adrCpu       : in std_logic_vector (2 downto 0);
   doCpu        : in std_logic;
   weSelSpeech  : in std_logic;
   Clk1MHz      : in std_logic;
-  SpeechSample : out integer range -512 to 511
+  SpeechSample : out integer range -512 to 511;
+  dn_addr      : in  std_logic_vector(16 downto 0);
+  dn_data      : in  std_logic_vector(7 downto 0);
+  dn_wr        : in  std_logic
 );
 
 end bagman_speech;
@@ -34,6 +38,7 @@ signal SpeechByte  : std_logic_vector( 7 downto 0);
 signal SpeechBit   : std_logic;
 signal Cnt512kHz   : std_logic_vector( 3 downto 0);
 signal Clk512kHz   : std_logic;
+signal rom1_cs,rom2_cs : std_logic;
 
 begin
 
@@ -120,18 +125,33 @@ port map(
   Speaking    => Speaking
 );
 
-SpeechRom1 : entity work.bagman_speech1
-port map(
-  addr => SpeechCntr,
-  clk   => not hclkn,
-  data  => SpeechData1
+rom1_cs <= '1' when dn_addr(16 downto 12) = '1'&X"4" else '0';
+rom2_cs <= '1' when dn_addr(16 downto 12) = '1'&X"5" else '0';
+
+SpeechRom1 : work.dpram generic map (12,8)
+port map
+(
+	clock_a   => clock_12mhz,
+	wren_a    => dn_wr and rom1_cs,
+	address_a => dn_addr(11 downto 0),
+	data_a    => dn_data,
+
+	clock_b   => not hclkn,
+	address_b => SpeechCntr,
+	q_b       => SpeechData1
 );
 
-SpeechRom2 : entity work.bagman_speech2
-port map(
-  addr => SpeechCntr,
-  clk  => not hclkn,
-  data => SpeechData2
+SpeechRom2 : work.dpram generic map (12,8)
+port map
+(
+	clock_a   => clock_12mhz,
+	wren_a    => dn_wr and rom2_cs,
+	address_a => dn_addr(11 downto 0),
+	data_a    => dn_data,
+
+	clock_b   => not hclkn,
+	address_b => SpeechCntr,
+	q_b       => SpeechData2
 );
 
 end architecture;

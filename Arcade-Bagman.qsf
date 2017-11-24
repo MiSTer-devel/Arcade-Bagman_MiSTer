@@ -367,6 +367,8 @@ set_global_assignment -name VHDL_FILE cpu/T80_Pack.vhd
 set_global_assignment -name VHDL_FILE cpu/T80_MCode.vhd
 set_global_assignment -name VHDL_FILE cpu/T80_ALU.vhd
 set_global_assignment -name VHDL_FILE cpu/T80.vhd
+set_global_assignment -name VHDL_FILE dpram.vhd
+set_global_assignment -name VHDL_FILE bagman_palette.vhd
 set_global_assignment -name VHDL_FILE bagman_speech.vhd
 set_global_assignment -name VHDL_FILE plc10_speech_synthetizer.vhd
 set_global_assignment -name VHDL_FILE ym_2149_linmix.vhd
