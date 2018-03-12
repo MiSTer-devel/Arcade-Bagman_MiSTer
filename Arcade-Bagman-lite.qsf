@@ -353,22 +353,28 @@ set_location_assignment PIN_W20 -to SW[3]
 
 set_global_assignment -name PRE_FLOW_SCRIPT_FILE "quartus_sh:sys/build_id.tcl"
 
-set_global_assignment -name CDF_FILE jtag_lite.cdf
+set_global_assignment -name CDF_FILE jtag.cdf
 set_global_assignment -name QIP_FILE sys/sys.qip
-set_global_assignment -name QIP_FILE sys/sysmem.qip
-set_global_assignment -name VHDL_FILE dpram.vhd
+set_global_assignment -name VHDL_FILE ROM/bagman_tile_bit1.vhd
+set_global_assignment -name VHDL_FILE ROM/bagman_tile_bit0.vhd
+set_global_assignment -name VHDL_FILE ROM/bagman_speech2.vhd
+set_global_assignment -name VHDL_FILE ROM/bagman_speech1.vhd
+set_global_assignment -name VHDL_FILE ROM/bagman_program.vhd
+set_global_assignment -name VHDL_FILE ROM/bagman_palette.vhd
+set_global_assignment -name VHDL_FILE ROM/bagman_sram_8bits.vhd
 set_global_assignment -name VHDL_FILE cpu/T80s.vhd
 set_global_assignment -name VHDL_FILE cpu/T80_Reg.vhd
 set_global_assignment -name VHDL_FILE cpu/T80_Pack.vhd
 set_global_assignment -name VHDL_FILE cpu/T80_MCode.vhd
 set_global_assignment -name VHDL_FILE cpu/T80_ALU.vhd
 set_global_assignment -name VHDL_FILE cpu/T80.vhd
+set_global_assignment -name VHDL_FILE dpram.vhd
+set_global_assignment -name VHDL_FILE bagman_palette.vhd
 set_global_assignment -name VHDL_FILE bagman_speech.vhd
 set_global_assignment -name VHDL_FILE plc10_speech_synthetizer.vhd
 set_global_assignment -name VHDL_FILE ym_2149_linmix.vhd
 set_global_assignment -name VERILOG_FILE screen_rotate.v
 set_global_assignment -name VHDL_FILE video_gen.vhd
-set_global_assignment -name VHDL_FILE bagman_palette.vhd
 set_global_assignment -name VHDL_FILE bagman_pal16r6.vhd
 set_global_assignment -name VHDL_FILE bagman.vhd
 set_global_assignment -name SYSTEMVERILOG_FILE "Arcade-Bagman.sv"
