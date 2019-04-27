@@ -23,6 +23,8 @@ port(
 	vce          : out std_logic;
 
 	joy_pcfrldu  : in std_logic_vector(6 downto 0);
+	joy_pcfrldu_2  : in std_logic_vector(6 downto 0);
+   I_DIP_SW : in std_logic_vector(7 downto 0);
 
 	sound_string : out std_logic_vector(12 downto 0);
 
@@ -176,7 +178,7 @@ end process;
 ------------------------------------
 with cpu_addr(15 downto 11) select 
 	cpu_di_mem <=
-		"00000000"          when "10110", -- dip switch
+		I_DIP_SW          when "10110", -- dip switch
 		"00" & pal16r6_data when "10100", -- rd4, random generator
 		sram_data_to_cpu    when others;
 
@@ -450,7 +452,8 @@ port map (
 	O_IOA       => open,
 	O_IOA_OE_L  => open,
 -- port b
-	I_IOB       => "11111111",
+	I_IOB       => not(joy_pcfrldu_2(4) & joy_pcfrldu_2(1) & joy_pcfrldu_2(0) & joy_pcfrldu_2(3) & joy_pcfrldu_2(2) & joy_pcfrldu_2(5) & '0' & joy_pcfrldu_2(6)),
+	--I_IOB       => "11111111",
 	O_IOB       => open,
 	O_IOB_OE_L  => open,
 
