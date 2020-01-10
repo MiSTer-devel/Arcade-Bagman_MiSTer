@@ -100,8 +100,8 @@ assign HDMI_ARY = status[1] ? 8'd9  : status[2] ? 8'd3 : 8'd4;
 `include "build_id.v" 
 localparam CONF_STR = {
 	"A.BAGMAN;;",
-	"O1,Aspect Ratio,Original,Wide;",
-	"O2,Orientation,Vert,Horz;",
+	"H0O1,Aspect Ratio,Original,Wide;",
+	"H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
 	"-;",
 	"O89,Lives,2,3,4,5;",
@@ -111,7 +111,9 @@ localparam CONF_STR = {
 	"ODE,Difficulty,Easy,Medium,Hard,Hardest;",	
 	"-;",
 	"R0,Reset;",
-	"J1,Fire,Start 1P,Start 2P;",
+	"J1,Fire,Start 1P,Start 2P,Coin;",
+        "jn,A,Start,Select,R;",
+
 	"V,v2",`BUILD_DATE
 };
 wire [7:0] m_dip = {~status[12],~status[11],~status[10],~status[14:13],1'b1,~status[9:8]};
@@ -136,6 +138,7 @@ pll pll
 wire [31:0] status;
 wire  [1:0] buttons;
 wire        forced_scandoubler;
+wire        direct_video;
 
 wire        ioctl_download;
 wire        ioctl_wr;
@@ -159,8 +162,11 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 
 	.buttons(buttons),
 	.status(status),
+	.status_menumask(direct_video),
 	.forced_scandoubler(forced_scandoubler),
 	.gamma_bus(gamma_bus),
+	.direct_video(direct_video),
+
 
 	.ioctl_download(ioctl_download),
 	.ioctl_wr(ioctl_wr),
@@ -224,26 +230,25 @@ reg btn_right_2=0;
 reg btn_fire_2=0;
 reg btn_test=0;
 
+wire no_rotate = status[2] & ~direct_video;
 
-
-wire m_up     = status[2] ? btn_left  | joy[1] : btn_up    | joy[3];
-wire m_down   = status[2] ? btn_right | joy[0] : btn_down  | joy[2];
-wire m_left   = status[2] ? btn_down  | joy[2] : btn_left  | joy[1];
-wire m_right  = status[2] ? btn_up    | joy[3] : btn_right | joy[0];
+wire m_up     = no_rotate ? btn_left  | joy[1] : btn_up    | joy[3];
+wire m_down   = no_rotate ? btn_right | joy[0] : btn_down  | joy[2];
+wire m_left   = no_rotate ? btn_down  | joy[2] : btn_left  | joy[1];
+wire m_right  = no_rotate ? btn_up    | joy[3] : btn_right | joy[0];
 wire m_fire   = btn_fire | joy[4];
 
-wire m_up_2     = status[2] ? btn_left_2  | joy[1] : btn_up_2    | joy[3];
-wire m_down_2   = status[2] ? btn_right_2 | joy[0] : btn_down_2  | joy[2];
-wire m_left_2   = status[2] ? btn_down_2  | joy[2] : btn_left_2  | joy[1];
-wire m_right_2  = status[2] ? btn_up_2    | joy[3] : btn_right_2 | joy[0];
+wire m_up_2     = no_rotate ? btn_left_2  | joy[1] : btn_up_2    | joy[3];
+wire m_down_2   = no_rotate ? btn_right_2 | joy[0] : btn_down_2  | joy[2];
+wire m_left_2   = no_rotate ? btn_down_2  | joy[2] : btn_left_2  | joy[1];
+wire m_right_2  = no_rotate ? btn_up_2    | joy[3] : btn_right_2 | joy[0];
 wire m_fire_2  = btn_fire_2|joy[4];
 
 wire m_start1 = btn_one_player  | joy[5];
 wire m_start2 = btn_two_players | joy[6];
-wire m_coin   = m_start1 | m_start2;
+wire m_coin   = m_start1 | m_start2 | joy[7];
 
 wire hblank, vblank;
-//wire ce_vid = clk_sys;
 wire hs, vs;
 wire [2:0] r,g;
 wire [1:0] b;
@@ -251,18 +256,17 @@ wire [1:0] b;
 
 reg ce_pix;
 always @(posedge clk_48m) begin
-        reg [1:0] div;
+        reg [2:0] div;
 
         div <= div + 1'd1;
         ce_pix <= !div;
 end
 
-arcade_rotate_fx #(512,224,8,0) arcade_video
+arcade_rotate_fx #(256,224,8,0) arcade_video
 (
         .*,
 
         .clk_video(clk_48m),
-        //.ce_pix(ce_vid),
 
         .RGB_in({r,g,b}),
         .HBlank(hblank),
@@ -270,8 +274,9 @@ arcade_rotate_fx #(512,224,8,0) arcade_video
         .HSync(hs),
         .VSync(vs),
 
+        .rotate_ccw(0),
+
         .fx(status[5:3]),
-        .no_rotate(status[2])
 );
 //screen_rotate #(256,224,8) screen_rotate
 
@@ -308,7 +313,7 @@ bagman bagman
 	// can't seem to get cocktail working..
 	.joy_pcfrldu_2({1'b0, m_start2|btn_start_2, m_fire, m_right,m_left,m_down,m_up}),
 	//.joy_pcfrldu_2({1'b0, m_start2|btn_start_2, m_fire_2, m_right_2,m_left_2,m_down_2,m_up_2}),
-   .I_DIP_SW(m_dip),
+	.I_DIP_SW(m_dip),
 
 	.sound_string(audio),
 
