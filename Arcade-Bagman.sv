@@ -84,8 +84,6 @@ module emu
 	// Set USER_OUT to 1 to read from USER_IN.
 	input   [6:0] USER_IN,
 	output  [6:0] USER_OUT
-	
-	
 );
 
 assign VGA_F1    = 0;
@@ -111,10 +109,9 @@ localparam CONF_STR = {
 	"ODE,Difficulty,Easy,Medium,Hard,Hardest;",	
 	"-;",
 	"R0,Reset;",
-	"J1,Fire,Start 1P,Start 2P,Coin;",
-        "jn,A,Start,Select,R;",
-
-	"V,v2",`BUILD_DATE
+	"J1,Fire 1,Fire 2,Start 1P,Start 2P,Coin;",
+	"jn,A,B,Start,Select,R;",
+	"V,v",`BUILD_DATE
 };
 wire [7:0] m_dip = {~status[12],~status[11],~status[10],~status[14:13],1'b1,~status[9:8]};
 ////////////////////   CLOCKS   ///////////////////
@@ -190,11 +187,11 @@ always @(posedge clk_sys) begin
 			'hX72: btn_down        <= pressed; // down
 			'hX6B: btn_left        <= pressed; // left
 			'hX74: btn_right       <= pressed; // right
-			'h029: btn_fire        <= pressed; // space
-			'h014: btn_fire        <= pressed; // ctrl
+			'h029: btn_fire1       <= pressed; // space
+			'h014: btn_fire2       <= pressed; // ctrl
 
-			'h005: btn_one_player  <= pressed; // F1
-			'h006: btn_two_players <= pressed; // F2
+			'h005: btn_start_1     <= pressed; // F1
+			'h006: btn_start_2     <= pressed; // F2
 			// JPAC/IPAC/MAME Style Codes
 
 			'h016: btn_start_1     <= pressed; // 1
@@ -215,9 +212,8 @@ reg btn_up    = 0;
 reg btn_down  = 0;
 reg btn_right = 0;
 reg btn_left  = 0;
-reg btn_fire  = 0;
-reg btn_one_player  = 0;
-reg btn_two_players = 0;
+reg btn_fire1 = 0;
+reg btn_fire2 = 0;
 
 reg btn_start_1=0;
 reg btn_start_2=0;
@@ -232,53 +228,46 @@ reg btn_test=0;
 
 wire no_rotate = status[2] & ~direct_video;
 
-wire m_up     = no_rotate ? btn_left  | joy[1] : btn_up    | joy[3];
-wire m_down   = no_rotate ? btn_right | joy[0] : btn_down  | joy[2];
-wire m_left   = no_rotate ? btn_down  | joy[2] : btn_left  | joy[1];
-wire m_right  = no_rotate ? btn_up    | joy[3] : btn_right | joy[0];
-wire m_fire   = btn_fire | joy[4];
+wire m_up     = btn_up    | joy[3];
+wire m_down   = btn_down  | joy[2];
+wire m_left   = btn_left  | joy[1];
+wire m_right  = btn_right | joy[0];
+wire m_fire1  = btn_fire1 | joy[4];
+wire m_fire2  = btn_fire2 | joy[5];
 
-wire m_up_2     = no_rotate ? btn_left_2  | joy[1] : btn_up_2    | joy[3];
-wire m_down_2   = no_rotate ? btn_right_2 | joy[0] : btn_down_2  | joy[2];
-wire m_left_2   = no_rotate ? btn_down_2  | joy[2] : btn_left_2  | joy[1];
-wire m_right_2  = no_rotate ? btn_up_2    | joy[3] : btn_right_2 | joy[0];
-wire m_fire_2  = btn_fire_2|joy[4];
+wire m_up_2   = btn_up_2    | joy[3];
+wire m_down_2 = btn_down_2  | joy[2];
+wire m_left_2 = btn_left_2  | joy[1];
+wire m_right_2= btn_right_2 | joy[0];
+wire m_fire1_2= btn_fire_2  | joy[4];
+wire m_fire2_2= joy[5];
 
-wire m_start1 = btn_one_player  | joy[5];
-wire m_start2 = btn_two_players | joy[6];
-wire m_coin   = m_start1 | m_start2 | joy[7];
+wire m_start1 = btn_start_1 | joy[6];
+wire m_start2 = btn_start_2 | joy[7];
+wire m_coin   = btn_coin_1  | btn_coin_2 | joy[8];
 
 wire hblank, vblank;
 wire hs, vs;
 wire [2:0] r,g;
 wire [1:0] b;
+wire ce_pix;
 
-
-reg ce_pix;
-always @(posedge clk_48m) begin
-        reg [2:0] div;
-
-        div <= div + 1'd1;
-        ce_pix <= !div;
-end
-
-arcade_rotate_fx #(256,224,8,0) arcade_video
+arcade_rotate_fx #(256,224,8) arcade_video
 (
-        .*,
+	.*,
 
-        .clk_video(clk_48m),
+	.clk_video(clk_48m),
 
-        .RGB_in({r,g,b}),
-        .HBlank(hblank),
-        .VBlank(vblank),
-        .HSync(hs),
-        .VSync(vs),
+	.RGB_in({r,g,b}),
+	.HBlank(hblank),
+	.VBlank(vblank),
+	.HSync(hs),
+	.VSync(vs),
 
-        .rotate_ccw(0),
+	.rotate_ccw(0),
 
-        .fx(status[5:3]),
+	.fx(status[5:3])
 );
-//screen_rotate #(256,224,8) screen_rotate
 
 
 wire [12:0] audio;
@@ -300,7 +289,7 @@ bagman bagman
 	.clock_1mhz(clk_1m),
 	.reset(~initReset_n|RESET | status[0] | buttons[1]),
 
-	.vce(ce_vid),
+	.vce(ce_pix),
 	.video_r(r),
 	.video_g(g),
 	.video_b(b),
@@ -309,9 +298,9 @@ bagman bagman
 	.hblank(hblank),
 	.vblank(vblank),
 
-	.joy_pcfrldu({m_coin|btn_coin_1|btn_coin_2, m_start1|btn_start_1, m_fire, m_right,m_left,m_down,m_up}),
+	.joy_pcfrldu({m_coin, m_start1 | m_fire2, m_fire1, m_right, m_left, m_down, m_up}),
 	// can't seem to get cocktail working..
-	.joy_pcfrldu_2({1'b0, m_start2|btn_start_2, m_fire, m_right,m_left,m_down,m_up}),
+	.joy_pcfrldu_2({1'b0, m_start2 | m_fire2_2, m_fire1_2, m_right_2,m_left_2,m_down_2,m_up_2}),
 	//.joy_pcfrldu_2({1'b0, m_start2|btn_start_2, m_fire_2, m_right_2,m_left_2,m_down_2,m_up_2}),
 	.I_DIP_SW(m_dip),
 
