@@ -285,7 +285,7 @@ begin
 				else
 					tile_code(10 downto 0) <= sram_di(5 downto 0) & y_diff_sprite(3) & x_tile(0) & y_diff_sprite(2 downto 0);
 				end if;
-				inv_sprite <= sram_di(7 downto 6);
+				--inv_sprite <= sram_di(7 downto 6);
 			else
 				tile_code(10 downto 0) <= sram_di & y_pixel;
 			end if;

@@ -149,7 +149,6 @@ wire [15:0] joy = joystick_0 | joystick_1;
 
 wire [21:0] gamma_bus;
 
-
 hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 (
 	.clk_sys(clk_sys),
@@ -203,7 +202,6 @@ always @(posedge clk_sys) begin
 			'h023: btn_left_2      <= pressed; // D
 			'h034: btn_right_2     <= pressed; // G
 			'h01C: btn_fire_2      <= pressed; // A
-			'h02C: btn_test        <= pressed; // T
 		endcase
 	end
 end
@@ -224,9 +222,6 @@ reg btn_down_2=0;
 reg btn_left_2=0;
 reg btn_right_2=0;
 reg btn_fire_2=0;
-reg btn_test=0;
-
-wire no_rotate = status[2] & ~direct_video;
 
 wire m_up     = btn_up    | joy[3];
 wire m_down   = btn_down  | joy[2];
@@ -252,7 +247,7 @@ wire [2:0] r,g;
 wire [1:0] b;
 wire ce_pix;
 
-arcade_rotate_fx #(256,224,8) arcade_video
+arcade_video #(256,224,8) arcade_video
 (
 	.*,
 
@@ -264,6 +259,7 @@ arcade_rotate_fx #(256,224,8) arcade_video
 	.HSync(hs),
 	.VSync(vs),
 
+	.no_rotate(status[2] | direct_video),
 	.rotate_ccw(0),
 
 	.fx(status[5:3])

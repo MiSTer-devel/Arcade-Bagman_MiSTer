@@ -9,7 +9,6 @@ set_global_assignment -name VHDL_FILE bagman_palette.vhd
 set_global_assignment -name VHDL_FILE bagman_speech.vhd
 set_global_assignment -name VHDL_FILE plc10_speech_synthetizer.vhd
 set_global_assignment -name VHDL_FILE ym_2149_linmix.vhd
-set_global_assignment -name VERILOG_FILE screen_rotate.v
 set_global_assignment -name VHDL_FILE video_gen.vhd
 set_global_assignment -name VHDL_FILE bagman_pal16r6.vhd
 set_global_assignment -name VHDL_FILE bagman.vhd
