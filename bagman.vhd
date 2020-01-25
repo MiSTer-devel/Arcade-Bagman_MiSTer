@@ -279,12 +279,10 @@ begin
 			sram_data_to_cpu <= sram_di;
 		elsif addr_state = "0100" then
 			if is_sprite = '1' then
-				if sram_di(7) = '1' then
-					tile_code(10 downto 0) <= sram_di(5 downto 0) & not (y_diff_sprite(3)) & x_tile(0) & not(y_diff_sprite(2 downto 0));
-				else
-					tile_code(10 downto 0) <= sram_di(5 downto 0) & y_diff_sprite(3) & x_tile(0) & y_diff_sprite(2 downto 0);
-				end if;
-				--inv_sprite <= sram_di(7 downto 6);
+				tile_code(10 downto 0) <= sram_di(5 downto 0) & 
+												 ((y_diff_sprite(3) & x_tile(0)) xor sram_di(7 downto 6)) &
+												 (y_diff_sprite(2 downto 0) xor (sram_di(7) & sram_di(7) & sram_di(7)));
+				inv_sprite <= sram_di(7 downto 6);
 			else
 				tile_code(10 downto 0) <= sram_di & y_pixel;
 			end if;
@@ -305,6 +303,14 @@ begin
 			tile_graph1_r <= tile_graph1;
 			tile_graph2_r <= tile_graph2;
 			is_sprite_r <= is_sprite;
+
+			if is_sprite = '1' and inv_sprite(0) = '1' then 
+				for i in 0 to 7 loop
+					tile_graph1_r(i) <= tile_graph1(7-i);
+					tile_graph2_r(i) <= tile_graph2(7-i);
+				end loop;
+			end if;
+			
 			keep_sprite <= '0';
 			if (y_diff_sprite(7 downto 4) = "1111") and (x_sprite > "00000000") and (y_sprite > "00000000") then
 					keep_sprite <= '1';
