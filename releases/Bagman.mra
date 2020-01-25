@@ -17,23 +17,14 @@
 	<rom index="1">
 		<part>00</part>
 	</rom> 
-	<rom index="0" zip="bagman.zip" md5="34fb0fd77e6e9177051211d6193e9695" type="merged|nonmerged">
+	<rom index="0" zip="bagman.zip" md5="893dab67883c2dbbe4e58488c2cae865" type="merged|nonmerged">
 		<part name="e9_b05.bin"/>
 		<part name="f9_b06.bin"/>
 		<part name="f9_b07.bin"/>
 		<part name="k9_b08.bin"/>
 		<part name="m9_b09s.bin"/>
 		<part name="n9_b10.bin"/>
-		<part name="t9_b12.bin"/>
-		<part name="t9_b12.bin"/>
-		<part name="t9_b12.bin"/>
-		<part name="t9_b12.bin"/>
-		<part name="t9_b12.bin"/>
-		<part name="t9_b12.bin"/>
-		<part name="t9_b12.bin"/>
-		<part name="t9_b12.bin"/>
-		<part name="t9_b12.bin"/>
-		<part name="t9_b12.bin"/>
+		<part repeat="40960">00</part>
 		<part name="e1_b02.bin"/>
 		<part name="c1_b01.bin"/>
 		<part name="j1_b04.bin"/>
