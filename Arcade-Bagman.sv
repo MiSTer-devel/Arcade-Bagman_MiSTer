@@ -102,18 +102,14 @@ localparam CONF_STR = {
 	"H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
 	"-;",
-	"O89,Lives,2,3,4,5;",
-	"OA,Language,English,French;",
-	"OB,Bonus Life,3k,4k;",
-	//"OC,Cabinet,Upright,Cocktail;",	
-	"ODE,Difficulty,Easy,Medium,Hard,Hardest;",	
+	"DIP;",
 	"-;",
 	"R0,Reset;",
 	"J1,Fire 1,Fire 2,Start 1P,Start 2P,Coin;",
 	"jn,A,B,Start,Select,R;",
 	"V,v",`BUILD_DATE
 };
-wire [7:0] m_dip = {~status[12],~status[11],~status[10],~status[14:13],1'b1,~status[9:8]};
+
 ////////////////////   CLOCKS   ///////////////////
 
 wire clk_sys, clk_1m, clk_24m,clk_48m;
@@ -141,6 +137,7 @@ wire        ioctl_download;
 wire        ioctl_wr;
 wire [24:0] ioctl_addr;
 wire  [7:0] ioctl_dout;
+wire  [7:0] ioctl_index;
 
 wire [10:0] ps2_key;
 
@@ -168,6 +165,7 @@ hps_io #(.STRLEN($size(CONF_STR)>>3)) hps_io
 	.ioctl_wr(ioctl_wr),
 	.ioctl_addr(ioctl_addr),
 	.ioctl_dout(ioctl_dout),
+	.ioctl_index(ioctl_index),
 
 	.joystick_0(joystick_0),
 	.joystick_1(joystick_1),
@@ -223,12 +221,12 @@ reg btn_left_2=0;
 reg btn_right_2=0;
 reg btn_fire_2=0;
 
-wire m_up     = btn_up    | joy[3];
-wire m_down   = btn_down  | joy[2];
-wire m_left   = btn_left  | joy[1];
-wire m_right  = btn_right | joy[0];
-wire m_fire1  = btn_fire1 | joy[4];
-wire m_fire2  = btn_fire2 | joy[5];
+wire m_up     = btn_up      | joy[3];
+wire m_down   = btn_down    | joy[2];
+wire m_left   = btn_left    | joy[1];
+wire m_right  = btn_right   | joy[0];
+wire m_fire1  = btn_fire1   | joy[4];
+wire m_fire2  = btn_fire2   | joy[5];
 
 wire m_up_2   = btn_up_2    | joy[3];
 wire m_down_2 = btn_down_2  | joy[2];
@@ -271,19 +269,31 @@ assign AUDIO_L = {audio, 3'b000};
 assign AUDIO_R = AUDIO_L;
 assign AUDIO_S = 0;
 
-reg initReset_n = 0;
+reg mod_sbag = 0;
+reg mod_pick = 0;
+
 always @(posedge clk_sys) begin
-	reg old_download = 0;
-	old_download <= ioctl_download;
+	reg [7:0] mod = 0;
+	if (ioctl_wr & (ioctl_index==1)) mod <= ioctl_dout;
 	
-	if(old_download & ~ioctl_download) initReset_n <= 1;
+	mod_sbag <= (mod == 1);
+	mod_pick <= (mod == 2);
 end
+
+reg [7:0] sw[8];
+always @(posedge clk_sys) if (ioctl_wr && (ioctl_index==254) && !ioctl_addr[24:3]) sw[ioctl_addr[2:0]] <= ioctl_dout; 
+
+wire [7:0] p1_bag  = ~{m_fire1,   m_down,   m_up,   m_right,   m_left,   m_start1, 1'b0, m_coin};
+wire [7:0] p2_bag  = ~{m_fire1_2, m_down_2, m_up_2, m_right_2, m_left_2, m_start2, 1'b0, 1'b0  };
+
+wire [7:0] p1_sbag = ~{m_fire1,   m_down,   m_up,   m_right,   m_left,   m_start1 | m_fire2,   1'b0, m_coin};
+wire [7:0] p2_sbag = ~{m_fire1_2, m_down_2, m_up_2, m_right_2, m_left_2, m_start2 | m_fire2_2, 1'b0, 1'b0  };
 
 bagman bagman
 (
 	.clock_12mhz(clk_sys),
 	.clock_1mhz(clk_1m),
-	.reset(~initReset_n|RESET | status[0] | buttons[1]),
+	.reset(RESET | status[0] | buttons[1]),
 
 	.vce(ce_pix),
 	.video_r(r),
@@ -294,17 +304,15 @@ bagman bagman
 	.hblank(hblank),
 	.vblank(vblank),
 
-	.joy_pcfrldu({m_coin, m_start1 | m_fire2, m_fire1, m_right, m_left, m_down, m_up}),
-	// can't seem to get cocktail working..
-	.joy_pcfrldu_2({1'b0, m_start2 | m_fire2_2, m_fire1_2, m_right_2,m_left_2,m_down_2,m_up_2}),
-	//.joy_pcfrldu_2({1'b0, m_start2|btn_start_2, m_fire_2, m_right_2,m_left_2,m_down_2,m_up_2}),
-	.I_DIP_SW(m_dip),
+	.joy_p1(mod_sbag ? p1_sbag : p1_bag),
+	.joy_p2(mod_sbag ? p2_sbag : p2_bag),
+	.dipsw(sw[0]),
 
 	.sound_string(audio),
 
 	.dn_addr(ioctl_addr[16:0]),
 	.dn_data(ioctl_dout),
-	.dn_wr(ioctl_wr)
+	.dn_wr(ioctl_wr & !ioctl_index)
 );
 
 endmodule
