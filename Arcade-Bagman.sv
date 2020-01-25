@@ -304,6 +304,8 @@ bagman bagman
 	.hblank(hblank),
 	.vblank(vblank),
 
+	.mod_pick(mod_pick),
+
 	.joy_p1(mod_sbag ? p1_sbag : p1_bag),
 	.joy_p2(mod_sbag ? p2_sbag : p2_bag),
 	.dipsw(sw[0]),

@@ -22,11 +22,13 @@ port(
 	vblank       : out std_logic;
 	vce          : out std_logic;
 
+	mod_pick     : in std_logic;
+
 	joy_p1       : in std_logic_vector(7 downto 0);
 	joy_p2       : in std_logic_vector(7 downto 0);
 	dipsw        : in std_logic_vector(7 downto 0);
 
-	sound_string : out std_logic_vector(12 downto 0);
+	sound_string : out unsigned(12 downto 0);
 
 	dn_addr      : in  std_logic_vector(16 downto 0);
 	dn_data      : in  std_logic_vector(7 downto 0);
@@ -87,12 +89,12 @@ signal cpu_di     : std_logic_vector(7 downto 0);
 signal cpu_mreq_n : std_logic;
 signal cpu_int_n  : std_logic;
 signal cpu_iorq_n : std_logic;
-signal cpu_di_mem : std_logic_vector(7 downto 0);
 
 signal misc_we_n   : std_logic;
 signal raz_int_n   : std_logic;
 signal sound_cs_n  : std_logic;
 signal speech_we_n : std_logic;
+signal sound2_cs_n : std_logic;
 
 -- data bus from sram when read by cpu
 signal sram_data_to_cpu : std_logic_vector(7 downto 0);
@@ -103,8 +105,8 @@ signal ym_8910_data : std_logic_vector(7 downto 0);
 -- audio
 signal ym_8910_audio : std_logic_vector(7 downto 0);
 signal music         : unsigned(12 downto 0);
-signal speech        : unsigned(12 downto 0);
 signal speech_sample : integer range -512 to 511;
+signal ym_8910_audio2: std_logic_vector(7 downto 0);
 --
 
 -- random generator
@@ -115,7 +117,7 @@ signal sram_we      : std_logic;
 signal sram_di      : std_logic_vector(7 downto 0);
 signal sram_do      : std_logic_vector(7 downto 0);
 
-signal rom_cs       : std_logic;
+signal rom_cs,pal_cs : std_logic;
 
 begin
 
@@ -169,33 +171,28 @@ begin
 				sound_cs_n <= cpu_data(0);
 			end if;
 
+			if cpu_addr(15 downto 11) = "10110" then
+				sound2_cs_n <= cpu_data(0);
 			end if;
+
+		end if;
 	end if;
 end process;
 
 ------------------------------------
--- mux cpu memory data read 
+-- mux cpu data read 
 ------------------------------------
-with cpu_addr(15 downto 11) select 
-	cpu_di_mem <=
-		dipsw               when "10110", -- dip switch
-		"00" & pal16r6_data when "10100", -- rd4, random generator
-		sram_data_to_cpu    when others;
-
-------------------------------------
--- mux cpu memory and io data read
-------------------------------------
-with cpu_iorq_n select   
-	cpu_di <=
-		ym_8910_data when '0',
-		cpu_di_mem   when others ;
+cpu_di <= ym_8910_data        when cpu_iorq_n = '0'                                    else
+          dipsw               when cpu_addr(15 downto 11) = "10110" and mod_pick = '0' else
+          dipsw               when cpu_addr(15 downto 11) = "10101" and mod_pick = '1' else
+          "00" & pal16r6_data when cpu_addr(15 downto 11) = "10100" and mod_pick = '0' else
+          sram_data_to_cpu;
 
 -----------------------
 -- mux sound and music
 -----------------------
-speech       <= "0" & to_unsigned((speech_sample+512),10) & "00";
-music        <= "00" & unsigned(ym_8910_audio) & "000";
-sound_string <= std_logic_vector(music + speech);
+sound_string <= ("00" & unsigned(ym_8910_audio) & "000") + ("0" & to_unsigned((speech_sample+512),10) & "00") when mod_pick = '0' else
+                ("00" & unsigned(ym_8910_audio) & "000") + ("00" & unsigned(ym_8910_audio2) & "000");
 
 ------------------------------------
 -- sram addressing scheme : 16 slots
@@ -220,14 +217,16 @@ begin
 				sram_we <= '1';
 			end if;
 		------------------------------------------------- background/sprite tile code
-			elsif addr_state ="0011" then
+		elsif addr_state ="0011" then
 			if is_sprite = '1' then
 				sram_addr <= "0" & X"98" & "000" & sprite & "00";
+			elsif mod_pick = '1' then
+				sram_addr <= "0" & X"8" & "10" & y_tile & x_tile;
 			else
 				sram_addr <= "0" & X"9" & "00" & y_tile & x_tile;
 			end if;
 		------------------------------------------------- background/sprite color
-			elsif addr_state ="0100" then
+		elsif addr_state ="0100" then
 			if is_sprite = '1' then
 				sram_addr <= "0" & X"98" & "000" & sprite & "01";
 			else
@@ -404,11 +403,19 @@ port map (
 	cpu_clock  => cpu_clock
 );
 
-palette : entity work.bagman_palette
-port map (
-	addr => pixel_color_r,
-	clk  => clock_12mhz,
-	data => do_palette 
+pal_cs <= '1' when dn_addr(16 downto 6) = '1' & x"60" & "00" else '0';
+
+palette : work.dpram generic map (6,8)
+port map
+(
+	clock_a   => clock_12mhz,
+	wren_a    => dn_wr and pal_cs,
+	address_a => dn_addr(5 downto 0),
+	data_a    => dn_data,
+
+	clock_b   => clock_12mhz,
+	address_b => pixel_color_r,
+	q_b       => do_palette
 );
 
 Z80 : entity work.T80s
@@ -453,12 +460,39 @@ port map (
 	O_IOA_OE_L  => open,
 -- port b
 	I_IOB       => joy_p2,
-	--I_IOB       => "11111111",
 	O_IOB       => open,
 	O_IOB_OE_L  => open,
 
 	ENA         => '1',
-	RESET_L     => '1',
+	RESET_L     => not reset,
+	CLK         => x_pixel(1) -- note 6 Mhz!
+);
+
+ym2149_2 : entity work.ym2149
+port map (
+-- data bus
+	I_DA        => cpu_data,
+	O_DA        => open,
+	O_DA_OE_L   => open,
+-- control
+	I_A9_L      => sound2_cs_n,
+	I_A8        =>     cpu_iorq_n or cpu_addr(3),
+	I_BDIR      => not(cpu_iorq_n or cpu_addr(2)),
+	I_BC2       => not(cpu_iorq_n or cpu_addr(1)),
+	I_BC1       => not(cpu_iorq_n or cpu_addr(0)),
+	I_SEL_L     => '1',
+	O_AUDIO     => ym_8910_audio2,
+-- port a
+	I_IOA       => "00000000",
+	O_IOA       => open,
+	O_IOA_OE_L  => open,
+-- port b
+	I_IOB       => "00000000",
+	O_IOB       => open,
+	O_IOB_OE_L  => open,
+
+	ENA         => '1',
+	RESET_L     => not reset,
 	CLK         => x_pixel(1) -- note 6 Mhz!
 );
 
