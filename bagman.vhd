@@ -32,7 +32,9 @@ port(
 
 	dn_addr      : in  std_logic_vector(16 downto 0);
 	dn_data      : in  std_logic_vector(7 downto 0);
-	dn_wr        : in  std_logic
+	dn_wr        : in  std_logic;
+
+  paused       : in  std_logic
 );
 end bagman;
 
@@ -429,7 +431,7 @@ generic map(Mode => 0, T2Write => 1, IOWait => 1)
 port map(
 	RESET_n => not reset,
 	CLK_n   => cpu_clock,
-	WAIT_n  => '1',
+	WAIT_n  => not paused,
 	INT_n   => cpu_int_n,
 	NMI_n   => '1',
 	BUSRQ_n => '1',

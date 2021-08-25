@@ -11,4 +11,5 @@ set_global_assignment -name VHDL_FILE ym_2149_linmix.vhd
 set_global_assignment -name VHDL_FILE video_gen.vhd
 set_global_assignment -name VHDL_FILE bagman_pal16r6.vhd
 set_global_assignment -name VHDL_FILE bagman.vhd
+set_global_assignment -name VERILOG_FILE "rtl/pause.v"
 set_global_assignment -name SYSTEMVERILOG_FILE "Arcade-Bagman.sv"

@@ -213,9 +213,14 @@ localparam CONF_STR = {
 	"h1O6,Control P1,Kbd/Joy,Spinner;",
 	"h1O7,Control P2,Kbd/Joy,Spinner;",
 	"h1-;",
+	"-;",
+	"P1,Pause options;",
+	"P1OL,Pause when OSD is open,On,Off;",
+	"P1OM,Dim video after 10s,On,Off;",
+	"-;",
 	"R0,Reset;",
-	"J1,Fire 1,Fire 2,Start 1P,Start 2P,Coin;",
-	"jn,A,B,Start,Select,R;",
+	"J1,Fire 1,Fire 2,Start 1P,Start 2P,Coin,Pause;",
+	"jn,A,B,Start,Select,R,L;",
 	"V,v",`BUILD_DATE
 };
 
@@ -297,6 +302,7 @@ wire m_fire2_2=               joy2[5];
 wire m_start1 = joy[6];
 wire m_start2 = joy[7];
 wire m_coin   = joy[8];
+wire m_pause  = joy[9];
 
 reg [1:0] m_dial1;
 always @(*) begin
@@ -314,6 +320,19 @@ always @(*) begin
   else               m_dial2 <= 3;
 end
 
+// PAUSE SYSTEM
+wire pause_cpu;
+
+wire [7:0] rgb_out;
+
+pause #(3,3,2,25) pause (
+  .*,
+  .reset(reset),
+  .user_button(m_pause),
+  .pause_request(),
+  .options(~status[22:21])
+);
+
 wire hblank, vblank;
 wire hs, vs;
 wire [2:0] r,g;
@@ -330,7 +349,7 @@ arcade_video #(256,8) arcade_video
 
 	.clk_video(clk_48m),
 
-	.RGB_in({r,g,b}),
+	.RGB_in(rgb_out),
 	.HBlank(hblank),
 	.VBlank(vblank),
 	.HSync(hs),
@@ -344,6 +363,8 @@ wire [12:0] audio;
 assign AUDIO_L = {audio, 3'b000};
 assign AUDIO_R = AUDIO_L;
 assign AUDIO_S = 0;
+
+wire reset = RESET | status[0] | buttons[1]| ioctl_download;
 
 reg mod_sbag = 0;
 reg mod_pick = 0;
@@ -365,7 +386,7 @@ bagman bagman
 (
 	.clock_12mhz(clk_sys),
 	.clock_1mhz(clk_1m),
-	.reset(RESET | status[0] | buttons[1]),
+	.reset(reset),
 
 	.vce(ce_pix),
 	.video_r(r),
@@ -386,7 +407,9 @@ bagman bagman
 
 	.dn_addr(ioctl_addr[16:0]),
 	.dn_data(ioctl_dout),
-	.dn_wr(ioctl_wr & !ioctl_index)
+	.dn_wr(ioctl_wr & !ioctl_index),
+
+  .paused(pause_cpu)
 );
 
 endmodule
