@@ -32,7 +32,16 @@ port(
 
 	dn_addr      : in  std_logic_vector(16 downto 0);
 	dn_data      : in  std_logic_vector(7 downto 0);
-	dn_wr        : in  std_logic
+	dn_wr				 : in	 std_logic;
+
+	paused			 : in	 std_logic;
+
+	hs_address	 : in	 std_logic_vector(15 downto 0);
+	hs_data_out	 : out std_logic_vector(7 downto 0);
+	hs_data_in	 : in	 std_logic_vector(7 downto 0);
+	hs_write_enable	 : in std_logic;
+	hs_write_intent	 : in std_logic;
+	hs_read_intent	 : in std_logic
 );
 end bagman;
 
@@ -119,6 +128,11 @@ signal sram_do      : std_logic_vector(7 downto 0);
 
 signal rom_cs,pal_cs : std_logic;
 
+signal port_a_addr  : std_logic_vector(16 downto 0);
+signal port_a_data  : std_logic_vector(7 downto 0);
+signal port_a_write : std_logic;
+signal tmp_addr     : std_logic_vector(11 downto 0);
+
 begin
 
 ------------------
@@ -170,7 +184,8 @@ begin
 			if cpu_addr(2 downto 0) = "111" then
 				sound_cs_n <= cpu_data(0);
 			end if;
-
+			-- I don't think this can ever be true since misc_we_n is only low if
+			-- cpu_addr(15 downto 11) = "10100"
 			if cpu_addr(15 downto 11) = "10110" then
 				sound2_cs_n <= cpu_data(0);
 			end if;
@@ -429,7 +444,7 @@ generic map(Mode => 0, T2Write => 1, IOWait => 1)
 port map(
 	RESET_n => not reset,
 	CLK_n   => cpu_clock,
-	WAIT_n  => '1',
+	WAIT_n  => not paused,
 	INT_n   => cpu_int_n,
 	NMI_n   => '1',
 	BUSRQ_n => '1',
@@ -525,13 +540,19 @@ port map(
 
 rom_cs <= '1' when dn_addr(16 downto 14) < "101" else '0';
 
+-- Multiplex rom loading with hs save/load
+port_a_write <= (dn_wr and rom_cs) or hs_write_intent;
+port_a_addr  <= dn_addr(16 downto 0) when ((dn_wr and rom_cs) = '1') else "0" & hs_address(15 downto 0);
+port_a_data  <= dn_data when ((dn_wr and rom_cs) = '1') else hs_data_in when hs_read_intent = '1';
+
 sram : work.dpram generic map (17,8)
 port map
 (
 	clock_a   => clock_12mhz,
-	wren_a    => dn_wr and rom_cs,
-	address_a => dn_addr(16 downto 0),
-	data_a    => dn_data,
+	wren_a    => port_a_write,
+	address_a => port_a_addr,
+	data_a    => port_a_data,
+	q_a				=> hs_data_out,
 
 	clock_b   => not clock_12mhz,
 	wren_b    => sram_we,
