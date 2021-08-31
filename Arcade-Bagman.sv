@@ -184,6 +184,7 @@ assign {SDRAM_DQ, SDRAM_A, SDRAM_BA, SDRAM_CLK, SDRAM_CKE, SDRAM_DQML, SDRAM_DQM
 assign VGA_F1 = 0;
 assign VGA_SCALER = 0;
 assign HDMI_FREEZE = 0;
+assign FB_FORCE_BLANK = 0;
 
 assign AUDIO_S = 0;
 assign AUDIO_MIX = 0;
@@ -207,6 +208,7 @@ localparam CONF_STR = {
 	"H0OJK,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"H1H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
+	"OR,Autosave Hiscores,Off,On;",
 	"-;",
 	"DIP;",
 	"-;",
@@ -248,9 +250,12 @@ wire        forced_scandoubler;
 wire        direct_video;
 
 wire        ioctl_download;
+wire        ioctl_upload;
+wire        ioctl_upload_req;
 wire        ioctl_wr;
 wire [24:0] ioctl_addr;
 wire  [7:0] ioctl_dout;
+wire  [7:0] ioctl_din;
 wire  [7:0] ioctl_index;
 
 
@@ -275,9 +280,12 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 
 
 	.ioctl_download(ioctl_download),
+	.ioctl_upload(ioctl_upload),
+	.ioctl_upload_req(ioctl_upload_req),
 	.ioctl_wr(ioctl_wr),
 	.ioctl_addr(ioctl_addr),
 	.ioctl_dout(ioctl_dout),
+	.ioctl_din(ioctl_din),
 	.ioctl_index(ioctl_index),
 
 	.joystick_0(joystick_0),
@@ -382,6 +390,40 @@ end
 reg [7:0] sw[8];
 always @(posedge clk_sys) if (ioctl_wr && (ioctl_index==254) && !ioctl_addr[24:3]) sw[ioctl_addr[2:0]] <= ioctl_dout; 
 
+// HISCORE SYSTEM
+// --------------
+
+wire [15:0]hs_address;
+wire [7:0] hs_data_in;
+wire [7:0] hs_data_out;
+wire hs_write_enable;
+wire hs_write_intent;
+wire hs_read_intent;
+wire hs_pause;
+
+hiscore #(
+	.HS_ADDRESSWIDTH(16),
+	.HS_SCOREWIDTH(7),			// 101 bytes from Botanic
+	.HS_CONFIGINDEX(5),
+	.HS_DUMPINDEX(6),
+	.CFG_ADDRESSWIDTH(8),		// 5 entries max across all
+	.CFG_LENGTHWIDTH(2)
+) hi (
+	.*,
+	.clk(clk_sys),
+	.paused(pause_cpu),
+	.autosave(status[27]),
+	.ram_address(hs_address),
+	.data_from_ram(hs_data_out),
+	.data_to_ram(hs_data_in),
+	.data_from_hps(ioctl_dout),
+	.data_to_hps(ioctl_din),
+	.ram_write(hs_write_enable),
+	.ram_intent_read(hs_read_intent),
+	.ram_intent_write(hs_write_intent),
+	.pause_cpu(hs_pause)
+);
+
 bagman bagman
 (
 	.clock_12mhz(clk_sys),
@@ -409,7 +451,14 @@ bagman bagman
 	.dn_data(ioctl_dout),
 	.dn_wr(ioctl_wr & !ioctl_index),
 
-  .paused(pause_cpu)
+  .paused(pause_cpu),
+
+  .hs_data_out(hs_data_out),
+  .hs_data_in(hs_data_in),
+  .hs_write_enable(hs_write_enable),
+  .hs_write_intent(hs_write_intent),
+  .hs_read_intent(hs_read_intent),
+  .hs_address(hs_address)
 );
 
 endmodule
