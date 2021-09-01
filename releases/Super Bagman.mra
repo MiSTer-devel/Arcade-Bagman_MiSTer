@@ -24,8 +24,7 @@
 	<players>2 (alternating)</players>
 	<joystick>4-way</joystick>
 	<special_controls></special_controls>
-	<num_buttons>1</num_buttons>
-	<button_names></button_names>
+	<buttons names="Action,Fire,Start 1P,Start 2P,Coin,Pause" default="A,B,Start,Select,R,L"/>
 
 	<switches default="F6">
 		<dip bits="0,1" ids="5,4,3,2" name="Lives"></dip>
@@ -68,8 +67,6 @@
 	<rom index="2"></rom>
 	<rom index="3"></rom>
 	<rom index="4"></rom>
-
-	<nvram></nvram>
 
 	<remark></remark>
 

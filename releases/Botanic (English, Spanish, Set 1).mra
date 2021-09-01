@@ -24,8 +24,7 @@
 	<players>2 (alternating)</players>
 	<joystick>4-way</joystick>
 	<special_controls></special_controls>
-	<num_buttons>1</num_buttons>
-	<button_names></button_names>
+	<buttons names="Invulnerability,-,Start 1P,Start 2P,Coin,Pause" default="A,Start,Select,R,L"/>
 
 	<switches default="EB">
 		<dip bits="0,1" ids="2,5,4,3" name="Lives"></dip>
@@ -35,7 +34,7 @@
 		</switches>
 
 	<rom index="1">
-		<part>02</part>
+		<part>04</part>
 		</rom>
 	<rom index="0" md5="3d834121fe171b5be594900bbf98194c" zip="botanic.zip">
 		<part crc="907f01c7" name="5.9e"></part>

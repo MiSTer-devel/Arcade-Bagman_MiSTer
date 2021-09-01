@@ -377,6 +377,7 @@ wire reset = RESET | status[0] | buttons[1]| ioctl_download;
 reg mod_sbag = 0;
 reg mod_pick = 0;
 reg mod_squa = 0;
+reg mod_botanic = 0;
 
 always @(posedge clk_sys) begin
 	reg [7:0] mod = 0;
@@ -385,6 +386,7 @@ always @(posedge clk_sys) begin
 	mod_sbag <= (mod == 1);
 	mod_pick <= (mod == 2);
 	mod_squa <= (mod == 3);
+	mod_botanic <= (mod == 4);
 end
 
 reg [7:0] sw[8];
@@ -439,10 +441,10 @@ bagman bagman
 	.hblank(hblank),
 	.vblank(vblank),
 
-	.mod_pick(mod_pick|mod_squa),
+	.mod_pick(mod_pick|mod_squa|mod_botanic),
 
 	.joy_p1(~{m_fire1,   mod_squa ? m_dial1 : {m_down,   m_up  }, m_right,   m_left,   m_start1 | (mod_sbag & m_fire2),   1'b0, m_coin}),
-	.joy_p2(~{m_fire1_2, mod_squa ? m_dial2 : {m_down_2, m_up_2}, m_right_2, m_left_2, m_start2 | (mod_sbag & m_fire2_2), 1'b0, 1'b0  }),
+	.joy_p2(~{m_fire1_2, mod_squa ? m_dial2 : {m_down_2, m_up_2}, m_right_2, m_left_2, m_start2 | (mod_sbag & m_fire2_2), mod_botanic, 1'b0  }),
 	.dipsw(sw[0]),
 
 	.sound_string(audio),
