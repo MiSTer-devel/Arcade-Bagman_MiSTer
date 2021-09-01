@@ -34,7 +34,7 @@
 		</switches>
 
 	<rom index="1">
-		<part>02</part>
+		<part>04</part>
 		</rom>
 	<rom index="0" md5="3d834121fe171b5be594900bbf98194c" zip="botanic.zip">
 		<part crc="907f01c7" name="5.9e"></part>
