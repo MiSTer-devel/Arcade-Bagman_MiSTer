@@ -25,7 +25,7 @@
 	<joystick>4-way</joystick>
 	<special_controls></special_controls>
 	<num_buttons>1</num_buttons>
-	<button_names></button_names>
+	<buttons names="Action,-,Start 1P,Start 2P,Coin,Pause" default="A,Start,Select,R,L"/>
 
 	<switches default="F6">
 		<dip bits="0,1" ids="5,4,3,2" name="Lives"></dip>
