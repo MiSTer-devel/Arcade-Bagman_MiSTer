@@ -56,7 +56,15 @@
 	<rom index="3"></rom>
 	<rom index="4"></rom>
 
-	<nvram></nvram>
+	<rom index="5" md5="none">
+	     	<part>
+			00 00 FF FF 00 FF 00 02 00 02 00 01 00 FF 02 00
+			00 00 72 0A 00 46 18 10
+			00 00 70 0A 00 1E 00 00
+			00 00 72 33 00 01 23 23
+ 		</part>
+ 	</rom>
+	<nvram index="6" size="101"/>
 
 	<remark></remark>
 

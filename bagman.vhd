@@ -131,7 +131,6 @@ signal rom_cs,pal_cs : std_logic;
 signal port_a_addr  : std_logic_vector(16 downto 0);
 signal port_a_data  : std_logic_vector(7 downto 0);
 signal port_a_write : std_logic;
-signal tmp_addr     : std_logic_vector(11 downto 0);
 
 begin
 
@@ -206,8 +205,8 @@ cpu_di <= ym_8910_data        when cpu_iorq_n = '0'                             
 -----------------------
 -- mux sound and music
 -----------------------
-sound_string <= ("00" & unsigned(ym_8910_audio) & "000") + ("0" & to_unsigned((speech_sample+512),10) & "00") when mod_pick = '0' else
-                ("00" & unsigned(ym_8910_audio) & "000") + ("00" & unsigned(ym_8910_audio2) & "000");
+sound_string <= ("000" & unsigned(ym_8910_audio) & "00") + (to_unsigned((speech_sample+512),10) & "000") when mod_pick = '0' else
+                 ("000" & unsigned(ym_8910_audio) & "00") + ("000" & unsigned(ym_8910_audio2) & "00");
 
 ------------------------------------
 -- sram addressing scheme : 16 slots
@@ -486,7 +485,7 @@ port map (
 
 	ENA         => '1',
 	RESET_L     => not reset,
-	CLK         => x_pixel(1) -- note 6 Mhz!
+	CLK         => x_pixel(1) and not paused -- note 6 Mhz!
 );
 
 ym2149_2 : entity work.ym2149
@@ -514,7 +513,7 @@ port map (
 
 	ENA         => '1',
 	RESET_L     => not reset,
-	CLK         => x_pixel(1) -- note 6 Mhz!
+	CLK         => x_pixel(1) and not paused -- note 6 Mhz!
 );
 
 bagman_speech : entity work.bagman_speech
@@ -541,9 +540,9 @@ port map(
 rom_cs <= '1' when dn_addr(16 downto 14) < "101" else '0';
 
 -- Multiplex rom loading with hs save/load
-port_a_write <= (dn_wr and rom_cs) or hs_write_intent;
+port_a_write <= (dn_wr and rom_cs) or hs_write_enable;
 port_a_addr  <= dn_addr(16 downto 0) when ((dn_wr and rom_cs) = '1') else "0" & hs_address(15 downto 0);
-port_a_data  <= dn_data when ((dn_wr and rom_cs) = '1') else hs_data_in when hs_read_intent = '1';
+port_a_data  <= dn_data when ((dn_wr and rom_cs) = '1') else hs_data_in;
 
 sram : work.dpram generic map (17,8)
 port map

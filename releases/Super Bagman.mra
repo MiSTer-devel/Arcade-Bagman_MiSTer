@@ -68,6 +68,14 @@
 	<rom index="3"></rom>
 	<rom index="4"></rom>
 
+	<rom index="5" md5="none">
+	     	<part>
+			00 00 FF FF 00 FF 00 02 00 02 00 01 00 FF 02 00
+			00 00 62 17 00 50 00 10
+ 		</part>
+ 	</rom>
+	<nvram index="6" size="80"/>
+
 	<remark></remark>
 
 	<mratimestamp>20210430005030</mratimestamp>
