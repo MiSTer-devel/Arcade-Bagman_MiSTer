@@ -15,11 +15,12 @@ port(
 	video_g      : out std_logic_vector(2 downto 0);
 	video_b      : out std_logic_vector(1 downto 0);
 	video_clk    : out std_logic;
-	video_csync  : out std_logic;
 	video_hs     : out std_logic;
 	video_vs     : out std_logic;
 	hblank       : out std_logic;
 	vblank       : out std_logic;
+  hoffset      : in std_logic_vector(3 downto 0);
+  voffset      : in std_logic_vector(3 downto 0);
 	vce          : out std_logic;
 
 	mod_pick     : in std_logic;
@@ -50,7 +51,6 @@ architecture struct of bagman is
 -- video syncs
 signal hsync       : std_logic;
 signal vsync       : std_logic;
-signal csync       : std_logic;
 
 -- global synchronisation
 signal addr_state : std_logic_vector(3 downto 0);
@@ -141,7 +141,6 @@ video_r     <= do_palette(2 downto 0);
 video_g     <= do_palette(5 downto 3);
 video_b     <= do_palette(7 downto 6);
 video_clk   <= clock_12mhz;
-video_csync <= csync;
 video_hs    <= hsync;
 video_vs    <= vsync;
 
@@ -407,9 +406,10 @@ port map (
 	clock_12mhz => clock_12mhz,
 	hsync   => hsync,
 	vsync   => vsync,
-	csync   => csync,
 	hblank  => hblank,
 	vblank  => vblank,
+  hoffset => hoffset,
+  voffset => voffset,
 	vce     => vce,
 
 	addr_state => addr_state,

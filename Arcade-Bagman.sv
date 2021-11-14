@@ -202,12 +202,20 @@ wire [1:0] ar = status[20:19];
 assign VIDEO_ARX = (!ar) ? ((status[2]|mod_squa)  ? 8'd4 : 8'd3) : (ar - 1'd1);
 assign VIDEO_ARY = (!ar) ? ((status[2]|mod_squa)  ? 8'd3 : 8'd4) : 12'd0;
 
+// Used status bits
+// 00000000001111111111222222222233
+// 01234567890123456789012345678901
+// 0123456789abcdefghijklmnopqrstuv
+//   xxxxxxxxxxxxxx   xxxx    x    
+
 `include "build_id.v" 
 localparam CONF_STR = {
 	"A.BAGMAN;;",
 	"H0OJK,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"H1H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
+	"O8B,Analog Video H-Pos,0,-1,-2,-3,-4,-5,-6,-7,8,7,6,5,4,3,2,1;",
+  "OCF,Analog Video V-Pos,0,-1,-2,-3,-4,-5,-6,-7,8,7,6,5,4,3,2,1;",
 	"h2OR,Autosave Hiscores,Off,On;",
 	"-;",
 	"DIP;",
@@ -366,6 +374,8 @@ arcade_video #(256,8) arcade_video
 	.fx(status[5:3])
 );
 
+wire [3:0] hoffset = status[11:8];
+wire [3:0] voffset = status[15:12];
 
 wire [12:0] audio;
 assign AUDIO_L = {audio, 3'b000};
@@ -442,6 +452,8 @@ bagman bagman
 	.video_vs(vs),
 	.hblank(hblank),
 	.vblank(vblank),
+  .hoffset(hoffset),
+  .voffset(voffset),
 
 	.mod_pick(mod_pick|mod_squa|mod_botanic),
 
