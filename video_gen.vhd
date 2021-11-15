@@ -9,9 +9,10 @@ port(
 	clock_12mhz : in std_logic;
 	hsync       : out std_logic;
 	vsync       : out std_logic;
-	csync       : out std_logic;
 	hblank      : out std_logic;
 	vblank      : out std_logic;
+	hoffset     : in std_logic_vector(3 downto 0);
+	voffset     : in std_logic_vector(3 downto 0);
 	vce         : out std_logic;
 
 	addr_state  : out std_logic_vector(3 downto 0);
@@ -31,9 +32,8 @@ signal hcnt    : unsigned (8 downto 0) := to_unsigned(511,9);
 signal vcnt    : unsigned (8 downto 0) := to_unsigned(511,9);
 signal vcnt_r  : unsigned (8 downto 0) := to_unsigned(511,9);
 
-signal hsync0  : std_logic;
-signal hsync1  : std_logic;
-signal hsync2  : std_logic;
+signal hoff    : integer range -8 to 7;
+signal voff    : integer range -8 to 7;
 
 signal enable_clk : std_logic := '0';
 
@@ -47,7 +47,8 @@ y_tile     <= std_logic_vector(vcnt_r(7 downto 3));
 x_pixel    <= std_logic_vector(hcnt(2 downto 0));
 y_pixel    <= std_logic_vector(vcnt_r(2 downto 0));
 
-hsync <= hsync0;
+hoff       <= to_integer(signed(hoffset));
+voff       <= to_integer(signed(voffset));
 
 -- Compteur horizontal : 511-128+1=384 pixels
 -- 128 à 175 :  48 pixels fin de ligne 
@@ -81,7 +82,7 @@ begin
 				hcnt <= hcnt + 1;
 			end if; 
 
-			if hcnt = 175 then
+			if hcnt = to_unsigned((175+ hoff),9) then
 				if vcnt = 511 then
 					vcnt <= to_unsigned(248,9);
 				else
@@ -89,34 +90,17 @@ begin
 				end if;
 			end if;
 
-			if    hcnt = (175+ 0) then hsync0 <= '0';
-			elsif hcnt = (175+29) then hsync0 <= '1';
+			if    hcnt = to_unsigned((175+ hoff),9) then hsync <= '0';
+			elsif hcnt = to_unsigned((175+ hoff+ 29),9) then hsync <= '1';
 			end if;    
 
-			if    hcnt = (175)        then hsync1 <= '0';
-			elsif hcnt = (175+13)     then hsync1 <= '1';
-			elsif hcnt = (175   +192) then hsync1 <= '0';
-			elsif hcnt = (175+13+192) then hsync1 <= '1';
-			end if;    
-
-			if    hcnt = (175)       then hsync2 <= '0';
-			elsif hcnt = (175-28)    then hsync2 <= '1';
-			end if;    
-
-			if    vcnt = 509 then csync <= hsync1;
-			elsif vcnt = 510 then csync <= hsync1;
-			elsif vcnt = 511 then csync <= hsync1;
-			elsif vcnt = 248 then csync <= hsync2;
-			elsif vcnt = 249 then csync <= hsync2;
-			elsif vcnt = 250 then csync <= hsync2;
-			elsif vcnt = 251 then csync <= hsync1;
-			elsif vcnt = 252 then csync <= hsync1;
-			elsif vcnt = 253 then csync <= hsync1;
-			else                  csync <= hsync0; 
-			end if;
-
-			if    vcnt = 511 then vsync <= '0';
-			elsif vcnt = 250 then vsync <= '1';
+			-- Turn sync on - could be at the end of this frame or the start of the next
+			if    vcnt = to_unsigned(511+ voff,9) then vsync <= '0';
+			elsif vcnt = to_unsigned(247+ voff,9) then vsync <= '0';
+			-- Similarly, turn it off. The offsets may underflow or overflow, but
+			-- will be correct.
+			elsif vcnt = to_unsigned(512+ voff,9) then vsync <= '1';
+			elsif vcnt = to_unsigned(250+ voff,9) then vsync <= '1';
 			end if;    
 
 			if    hcnt = (127+8+1) then hblank <= '1'; -- +8 = retard du shift_register + 1 pixel
