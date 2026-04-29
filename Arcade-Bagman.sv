@@ -220,6 +220,7 @@ localparam CONF_STR = {
 	"A.BAGMAN;;",
 	"H0OJK,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"H1H0O2,Orientation,Vert,Horz;",
+	"O1,Flip Screen,Off,On;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
 	"O8B,Analog Video H-Pos,0,-1,-2,-3,-4,-5,-6,-7,8,7,6,5,4,3,2,1;",
   "OCF,Analog Video V-Pos,0,-1,-2,-3,-4,-5,-6,-7,8,7,6,5,4,3,2,1;",
@@ -364,8 +365,12 @@ wire ce_pix;
 
 wire no_rotate = status[2] | direct_video | mod_squa;
 wire rotate_ccw = 0;
-wire flip = 0;
+wire flip = 1'b0;
 wire video_rotated;
+wire flip_osd = status[1];
+wire use_core_flip = direct_video | ~forced_scandoubler;
+wire flip_core = status[1];
+wire flip_rotate = flip_osd & ~use_core_flip;
 
 screen_rotate screen_rotate (.*);
 
@@ -466,6 +471,7 @@ bagman bagman
   .voffset(voffset),
 
 	.mod_pick(mod_pick|mod_squa|mod_botanic),
+	.flip(flip_core),
 
 	.joy_p1(~{m_fire1,   mod_squa ? m_dial1 : {m_down,   m_up  }, m_right,   m_left,   m_start1 | (mod_sbag & m_fire2),   1'b0, m_coin}),
 	.joy_p2(~{m_fire1_2, mod_squa ? m_dial2 : {m_down_2, m_up_2}, m_right_2, m_left_2, m_start2 | (mod_sbag & m_fire2_2), mod_botanic, 1'b0  }),

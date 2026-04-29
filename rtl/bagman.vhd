@@ -24,6 +24,7 @@ port(
 	vce          : out std_logic;
 
 	mod_pick     : in std_logic;
+	flip         : in std_logic;
 
 	joy_p1       : in std_logic_vector(7 downto 0);
 	joy_p2       : in std_logic_vector(7 downto 0);
@@ -60,7 +61,20 @@ signal x_tile     : std_logic_vector(4 downto 0);
 signal y_tile     : std_logic_vector(4 downto 0);
 signal x_pixel    : std_logic_vector(2 downto 0);
 signal y_pixel    : std_logic_vector(2 downto 0);
-signal y_line     : std_logic_vector(7 downto 0);
+-- signal y_line     : std_logic_vector(7 downto 0);
+signal x_tile_bg  : std_logic_vector(4 downto 0);
+signal y_tile_bg  : std_logic_vector(4 downto 0);
+signal y_pixel_bg : std_logic_vector(2 downto 0);
+
+signal xbit_idx   : unsigned(2 downto 0);
+
+signal y_vis_u    : unsigned(7 downto 0);
+signal y_vis_spr  : unsigned(7 downto 0);
+signal x_tile0_spr : std_logic;
+
+signal y_sprite_u   : unsigned(7 downto 0);
+signal y_sprite_eff : unsigned(7 downto 0);
+constant SPR_FLIP_Y_ADJ : unsigned(7 downto 0) := to_unsigned(0, 8);	-- Flip-mode sprite Y fine tune, keep at 0 unless future alignment needs it
 
 -- background and sprite tiles and graphics
 signal tile_code   : std_logic_vector(12 downto 0);
@@ -82,6 +96,8 @@ signal pixel_color_r : std_logic_vector(5 downto 0);
 signal y_diff_sprite      : std_logic_vector (7 downto 0);
 signal sprite_pixel_color : std_logic_vector(5 downto 0);
 signal do_palette         : std_logic_vector(7 downto 0);
+signal yds3               : std_logic;
+signal yds_lsb            : std_logic_vector(2 downto 0);
 
 signal addr_ram_sprite : std_logic_vector(8 downto 0);
 signal is_sprite_r     : std_logic;
@@ -133,6 +149,8 @@ signal port_a_data  : std_logic_vector(7 downto 0);
 signal port_a_write : std_logic;
 
 begin
+
+x_tile0_spr <= x_tile(0) xor flip;
 
 ------------------
 -- video output
@@ -234,16 +252,16 @@ begin
 			if is_sprite = '1' then
 				sram_addr <= "0" & X"98" & "000" & sprite & "00";
 			elsif mod_pick = '1' then
-				sram_addr <= "0" & X"8" & "10" & y_tile & x_tile;
+				sram_addr <= "0" & X"8" & "10" & y_tile_bg & x_tile_bg;
 			else
-				sram_addr <= "0" & X"9" & "00" & y_tile & x_tile;
+				sram_addr <= "0" & X"9" & "00" & y_tile_bg & x_tile_bg;
 			end if;
 		------------------------------------------------- background/sprite color
 		elsif addr_state ="0100" then
 			if is_sprite = '1' then
 				sram_addr <= "0" & X"98" & "000" & sprite & "01";
 			else
-				sram_addr <= "0" & X"9" & "10" & y_tile & x_tile;
+				sram_addr <= "0" & X"9" & "10" & y_tile_bg & x_tile_bg;
 			end if;
 		------------------------------------------------- cpu
 		elsif addr_state ="0110" then
@@ -293,11 +311,11 @@ begin
 		elsif addr_state = "0100" then
 			if is_sprite = '1' then
 				tile_code(10 downto 0) <= sram_di(5 downto 0) & 
-												 ((y_diff_sprite(3) & x_tile(0)) xor sram_di(7 downto 6)) &
-												 (y_diff_sprite(2 downto 0) xor (sram_di(7) & sram_di(7) & sram_di(7)));
+												 ((yds3 & x_tile0_spr) xor sram_di(7 downto 6)) &
+												 (yds_lsb xor (sram_di(7) & sram_di(7) & sram_di(7)));
 				inv_sprite <= sram_di(7 downto 6);
 			else
-				tile_code(10 downto 0) <= sram_di & y_pixel;
+				tile_code(10 downto 0) <= sram_di & y_pixel_bg;
 			end if;
 		elsif addr_state = "0101" then
 			tile_code(12 downto 11) <= sram_di(4 ) & sram_di(5);
@@ -317,7 +335,7 @@ begin
 			tile_graph2_r <= tile_graph2;
 			is_sprite_r <= is_sprite;
 
-			if is_sprite = '1' and inv_sprite(0) = '1' then 
+			if is_sprite = '1' and (inv_sprite(0) xor flip) = '1' then 
 				for i in 0 to 7 loop
 					tile_graph1_r(i) <= tile_graph1(7-i);
 					tile_graph2_r(i) <= tile_graph2(7-i);
@@ -335,8 +353,24 @@ end process;
 --------------------------------
 -- sprite y position
 --------------------------------
-y_line <= y_tile & y_pixel;
-y_diff_sprite <= std_logic_vector(unsigned(y_line) + unsigned(y_sprite) + 1);
+-- y_line <= y_tile & y_pixel;
+-- y_diff_sprite <= std_logic_vector(unsigned(y_line) + unsigned(y_sprite) + 1);
+
+y_vis_u <= unsigned(y_tile) & unsigned(y_pixel);
+y_vis_spr <= (not y_vis_u) when flip = '1' else y_vis_u;
+y_diff_sprite <= std_logic_vector(y_vis_spr + y_sprite_eff + 1);
+
+x_tile_bg  <= not x_tile  when (flip = '1' and is_sprite = '0') else x_tile;	
+y_tile_bg  <= not y_tile  when (flip = '1' and is_sprite = '0') else y_tile;
+y_pixel_bg <= not y_pixel when (flip = '1' and is_sprite = '0') else y_pixel;
+
+y_sprite_u <= unsigned(y_sprite);
+y_sprite_eff <= (y_sprite_u + SPR_FLIP_Y_ADJ) when flip = '1' else y_sprite_u;
+
+xbit_idx <= unsigned(x_pixel) when (flip = '1' and is_sprite_r = '0') else unsigned(not x_pixel);	
+
+yds3    <= y_diff_sprite(3);
+yds_lsb <= y_diff_sprite(2 downto 0);
 
 ------------------------------------------
 -- read/write sprite line-memory addresing
@@ -346,17 +380,23 @@ begin
 	if rising_edge(clock_12mhz) then
 	
 		if addr_state(0) = '1' then
-			addr_ram_sprite <= std_logic_vector(unsigned(addr_ram_sprite) + to_unsigned(1,8));
-		else
-			addr_ram_sprite <= addr_ram_sprite;
+		  if flip = '1' then
+			 addr_ram_sprite <= std_logic_vector(unsigned(addr_ram_sprite) - 1);
+		  else
+			 addr_ram_sprite <= std_logic_vector(unsigned(addr_ram_sprite) + 1);
+		  end if;
 		end if;
 		
 		if is_sprite = '1' and addr_state = "1111" and x_tile(0) = '0' then
-			addr_ram_sprite <= '0' & x_sprite;
+		  if flip = '1' then
+			 addr_ram_sprite <= std_logic_vector(unsigned('0' & x_sprite) + to_unsigned(15, 9));
+		  else
+			 addr_ram_sprite <= '0' & x_sprite;
+		  end if;
 		end if;
 
 		if is_sprite = '0' and addr_state = "1111" and x_tile = "00000" then
-			addr_ram_sprite <= "000000001";
+			addr_ram_sprite <= (others => '0');  -- start at 0, not 1
 		end if;
 		
 	end if;
@@ -369,14 +409,14 @@ process (clock_12mhz)
 begin
 	if rising_edge(clock_12mhz) then
 		if addr_state(0) = '0' then
-			sprite_pixel_color <= ram_sprite(to_integer(unsigned(addr_ram_sprite)));
+			sprite_pixel_color <= ram_sprite(to_integer(unsigned(addr_ram_sprite(7 downto 0))));
 		else
 			if is_sprite_r = '1' then
 				if (keep_sprite = '1') and (addr_ram_sprite(8) = '0') then
-						ram_sprite(to_integer(unsigned(addr_ram_sprite))) <= pixel_color_r;
+						ram_sprite(to_integer(unsigned(addr_ram_sprite(7 downto 0)))) <= pixel_color_r;
 				end if;
 			else
-				ram_sprite(to_integer(unsigned(addr_ram_sprite))) <= (others => '0');
+				ram_sprite(to_integer(unsigned(addr_ram_sprite(7 downto 0)))) <= (others => '0');
 			end if;
 		end if;
 	end if;
@@ -389,8 +429,8 @@ process (clock_12mhz)
 begin
 	if rising_edge(clock_12mhz) then
 pixel_color <=	tile_color_r & 
-								tile_graph1_r(to_integer(unsigned(not x_pixel))) &
-								tile_graph2_r(to_integer(unsigned(not x_pixel)));
+								tile_graph1_r(to_integer(xbit_idx)) &
+								tile_graph2_r(to_integer(xbit_idx));
 	end if;
 end process;
 
