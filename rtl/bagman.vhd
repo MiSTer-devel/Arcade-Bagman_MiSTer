@@ -126,6 +126,7 @@ signal sram_data_to_cpu : std_logic_vector(7 downto 0);
 
 -- data bus from AY-3-8910
 signal ym_8910_data : std_logic_vector(7 downto 0);
+signal ym_8910_data_oe_n : std_logic;
 
 -- audio
 signal ym_8910_audio : std_logic_vector(7 downto 0);
@@ -213,7 +214,10 @@ end process;
 ------------------------------------
 -- mux cpu data read 
 ------------------------------------
-cpu_di <= ym_8910_data        when cpu_iorq_n = '0'                                    else
+-- Keep the inactive I/O bus high. The game complements the input value,
+-- so returning zero here would look like all controls being pressed.
+cpu_di <= ym_8910_data        when cpu_iorq_n = '0' and ym_8910_data_oe_n = '0'         else
+          X"FF"               when cpu_iorq_n = '0'                                    else
           dipsw               when cpu_addr(15 downto 11) = "10110" and mod_pick = '0' else
           dipsw               when cpu_addr(15 downto 11) = "10101" and mod_pick = '1' else
           "00" & pal16r6_data when cpu_addr(15 downto 11) = "10100" and mod_pick = '0' else
@@ -505,7 +509,7 @@ port map (
 -- data bus
 	I_DA        => cpu_data,
 	O_DA        => ym_8910_data,
-	O_DA_OE_L   => open,
+	O_DA_OE_L   => ym_8910_data_oe_n,
 -- control
 	I_A9_L      => sound_cs_n,
 	I_A8        =>     cpu_iorq_n or cpu_addr(3),
